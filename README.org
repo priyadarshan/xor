@@ -31,7 +31,8 @@ story having a few discrete goals and an objectively scored outcome.)
 
 The sound will consist of subtle engine hisses and hums and quiet
 drones with contextual musical clues. I'm planning to use FM synthesis
-(Hexter) and also Milkytracker.
+(Hexter) and also Milkytracker. Alarm sounds, flashing, status, deep
+bass engines.
 
 Collecting items, energy, and minerals will be a significant play
 activity, along with dogfights against 1-3 enemies at a time.

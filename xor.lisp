@@ -1,4 +1,4 @@
-;;; xor.lisp --- space game mashup
+;;; xor.lisp --- A mashup of 8-bit space exploration and combat games
 
 ;; Copyright (C) 2010, 2011  David O'Toole
 
