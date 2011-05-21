@@ -43,62 +43,127 @@
 (setf *screen-height* 480)
 (setf *window-title* "XOR")
 
+;;; The walls of the reactor chamber
+
+(defparameter *vertical-collision*
+  '(:northeast :northwest
+    :northwest :northeast
+    :southeast :southwest
+    :southwest :southeast))
+
+(defparameter *horizontal-collision*
+  '(:southeast :northeast
+    :northeast :southeast
+    :southwest :northwest
+    :northwest :southwest))
+
 ;; A "resource" is an image, sound, piece of text, or some other asset
 ;; involved in gameplay. Often these are loaded from external files in
 ;; your project folder such as PNG images or WAV sound files. You can
 ;; define resources for a given project with `defresource':
 
-(defresource 
-    (:name "nebula" :type :image :file "nebula.png")
-    (:name "cloud1" :type :image :file "cloud1.png")
-  (:name "cloud2" :type :image :file "cloud2.png")
-  (:name "cloud3" :type :image :file "cloud3.png")
-  (:name "cloud4" :type :image :file "cloud4.png")
-  (:name "flarestar" :type :image :file "flarestar.png")
-  (:name "aquastar" :type :image :file "aquastar.png")
-  (:name "greenstar" :type :image :file "greenstar.png")
-  (:name "bluestar" :type :image :file "bluestar.png")
-  (:name "cosmos" :type :music :file "cosmos.ogg"))
+(defresource
+    (:name "wall" :type :image :file "wall.png"))
 
-(defvar *cloud-images* (list "cloud1" "cloud2" "cloud3" "cloud4"))
+(defcell horizontal-wall
+  :image "wall"
+  :orientation :horizontal
+  :categories '(:obstacle :oriented :wall))
 
-(defsprite cloud 
-  :image (random-choose *cloud-images*)
-  :blend :additive ;; for nice transparency.
+(defcell vertical-wall
+  :image "wall"
+  :orientation :vertical
+  :categories '(:obstacle :oriented :wall))
+
+(defun is-wall (thing)
+  (and (ioforms:object-p thing)
+       (in-category thing :wall)))
+
+(defun orientation (thing)
+  (when (is-wall thing)
+    (field-value :orientation thing)))
+
+(defun bounce-direction (thing direction)
+  (when (is-wall thing)
+    (let ((map (ecase (orientation thing)
+		 (:horizontal *horizontal-collision*)
+		 (:vertical *vertical-collision*))))
+      (getf direction map))))
+
+;;; The radioactive particles that are the star of the game
+
+(defresource
+  (:name "alpha-particle" :type :image :file "alpha-particle.png")
+  (:name "beta-particle" :type :image :file "beta-particle.png")
+  (:name "gamma-particle" :type :image :file "gamma-particle.png")
+  (:name "spark" :type :image :file "spark.png"))
+
+(defvar *particle-colors*
+  '(:alpha "alpha-particle"
+    :beta "beta-particle"
+    :gamma "gamma-particle"))
+
+(defparameter *fast-split-bounces* 4)
+(defparameter *medium-split-bounces* 8)
+
+(defsprite particle
   :direction (random-direction)
-  :x (+ 80 (random 500)) 
-  :y (+ 80 (random 500)))
+  :color nil
+  :speed 1
+  :bounces *medium-split-bounces*
+  :categories '(:particle))
 
-(define-method update cloud ()
-  (with-fields (direction) self
-    ;; move straight
-    (move self direction 0.05) 
-    ;; but with slight jitter
-    (move self (random-direction)
-	  (random 0.03)) 
-    ;; occasionally change direction
-    (percent-of-time 1 
-      (setf direction (left-turn direction)))))
+(define-method set-color particle (color)
+  (setf ^color color)
+  (setf ^image (getf *particle-colors* color)))
 
-;;; We can define some stars as well; these should move all in the
-;;; same direction, only very slightly.
+(define-method initialize particle 
+    (&key (color :alpha)
+	  (bounces *medium-split-bounces*)
+	  (speed 1)
+	  (x 0)
+	  (y 0))
+  (setf ^x x ^y y)
+  (setf ^bounces bounces)
+  (setf ^speed speed)
+  (set-color self color))
 
-(defvar *star-images* (list "flarestar" "greenstar" 
-			    "bluestar" "aquastar"
-			    "bluestar" "aquastar"
-			    "bluestar" "aquastar"))
+(define-method split particle ()
+  (with-fields (x y color speed) self
+    (drop (new particle 
+	       :color color
+	       :bounces *fast-split-bounces*
+	       :speed (+ 2 speed))
+	  x y)))
 
-;; The repeated entries are to make the repeated star images more
-;; common in the random selection.
+(define-method on-collide particle (thing)
+  (when (is-wall thing)
+    (with-fields (direction color bounces) self
+      (setf direction (bounce-direction thing))
+      (when (plusp bounces)  
+	(decf bounces))
+      (when (zerop bounces)
+	(split self)))))
 
-(defsprite star 
-  :image (random-choose *star-images*)
-  :blend :additive
-  :x (random 500)
-  :y (random 500))
+(define-method update particle ()
+  (with-fields (direction speed) self
+    (move self direction speed)))
 
-(define-method update star ()
-  (move self :north 0.02))
+;;; The player
+
+(defresource
+  (:name "robot" :type :image :file "robot.png"))
+  ;; (:name "trail1" :type :image :file "trail1.png")
+  ;; (:name "trail2" :type :image :file "trail2.png"))
+
+(defsprite robot 
+  :image "robot")
+
+;; (define-method initialize robot ()
+;;   (bind-event self (:up) (move :north 5 :pixels))
+;;   (bind-event self (:down) (move :south 5 :pixels))
+;;   (bind-event self (:right) (move :east 5 :pixels))
+;;   (bind-event self (:left) (move :west 5 :pixels)))
     
 ;; Let's put it all together by writing the code that runs when your
 ;; game starts. We define it as a function (using `defun') to be
@@ -113,12 +178,12 @@
 ;; hands control back to you.
  
 (defun xor ()
-  (play-music "cosmos")
-  (dotimes (n 6)
-    (add-block (new cloud)))
   (dotimes (n 20)
-    (add-block (new star))))
-    
+    (add-block (new particle 
+		    :color (random-choose (list :alpha :beta :gamma))
+		    :x (random *screen-width*)
+		    :y (random *screen-height*)))))
+		    
 ;; Once your startup function is finished, the game is running.
 
 ;;; xor.lisp ends here
