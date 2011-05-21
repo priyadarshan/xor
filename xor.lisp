@@ -18,14 +18,35 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+;;; THIS TUTORIAL EXAMPLE IS UNDER CONSTRUCTION.
+;; TODO user control
+;; TODO proper world use and bouncing ball
+
+;;; Preamble
+
+;; First, we set up a package (often called a "namespace" in other
+;; languages) with `defpackage' and then enter it with `in-package'.
+
+;; The `:use' declaration shows that we will be importing names from
+;; IOFORMS and from the base Common Lisp package.
+
 (defpackage :xor 
   (:use :ioforms :common-lisp))
 
 (in-package :xor)
 
-(setf *screen-width* 800)
-(setf *screen-height* 600)
-(setf *window-title* "XOR!")
+;; Now we should set a few system variables. In Common Lisp, globals
+;; are named `*like-this*' with an asterisk on each end, to
+;; distinguish them from normal variables.
+
+(setf *screen-width* 640)
+(setf *screen-height* 480)
+(setf *window-title* "XOR")
+
+;; A "resource" is an image, sound, piece of text, or some other asset
+;; involved in gameplay. Often these are loaded from external files in
+;; your project folder such as PNG images or WAV sound files. You can
+;; define resources for a given project with `defresource':
 
 (defresource 
     (:name "nebula" :type :image :file "nebula.png")
@@ -34,43 +55,52 @@
   (:name "cloud3" :type :image :file "cloud3.png")
   (:name "cloud4" :type :image :file "cloud4.png")
   (:name "flarestar" :type :image :file "flarestar.png")
+  (:name "aquastar" :type :image :file "aquastar.png")
   (:name "greenstar" :type :image :file "greenstar.png")
   (:name "bluestar" :type :image :file "bluestar.png")
-  (:name "sparkle-1" :type :image :file "sparkle-1.png")
-  (:name "sparkle-2" :type :image :file "sparkle-2.png"))
+  (:name "cosmos" :type :music :file "cosmos.ogg"))
 
-(defvar *clouds* (list "cloud1" "cloud2" "cloud3" "cloud4"))
-
-(defvar *stars* (list "flarestar" "greenstar" "bluestar"))
+(defvar *cloud-images* (list "cloud1" "cloud2" "cloud3" "cloud4"))
 
 (defsprite cloud 
-  :image (random-choose *clouds*)
-  :direction (random-direction :not-here)
+  :image (random-choose *cloud-images*)
+  :direction (random-direction)
   :x (+ 80 (random 500)) 
   :y (+ 80 (random 500)))
-
-(define-method draw cloud ()  
-  (with-fields (x y image) self
-    (draw-image image x y)))
 
 (define-method update cloud ()
-  (move-toward self ^direction 0.05)
-  (move-toward self (random-direction :not-here)
-	       (random 0.05)))
+  (with-fields (direction) self
+    ;; move straight
+    (move self direction 0.05) 
+    ;; but with slight jitter
+    (move self (random-direction)
+	  (random 0.03)) 
+    ;; occasionally change direction
+    (percent-of-time 1 
+      (setf direction (left-turn direction)))))
+
+;;; We can define some stars as well; these should move all in the
+;;; same direction, only very slightly.
+
+(defvar *star-images* (list "flarestar" "greenstar" 
+			    "bluestar" "aquastar"
+			    "bluestar" "aquastar"
+			    "bluestar" "aquastar"))
+
+;; The repeated entries are to make the repeated star images more
+;; common in the random selection.
 
 (defsprite star 
-  :image (random-choose *stars*)
-  :x (+ 80 (random 500)) 
-  :y (+ 80 (random 500)))
+  :image (random-choose *star-images*)
+  :x (random 500)
+  :y (random 500))
 
-(defun xor ()
-  (message "RUNNING XOR!")
-  (dotimes (n 20)
-    (add-block (new cloud))))
-
-
-;; Now we define the code that runs when your game starts. We define
-;; it as a function (using `defun') to be called later by IOFORMS.
+(define-method update star ()
+  (move self :north 0.02))
+    
+;; Let's put it all together by writing the code that runs when your
+;; game starts. We define it as a function (using `defun') to be
+;; called later by IOFORMS.
 
 ;; (What happens is that IOFORMS loads this file before initializing
 ;; the system, which allows you to set system variables like
@@ -79,18 +109,15 @@
 ;; parameters you set, it will look for a function with the same name
 ;; as the module---in this case `xor'---and execute it, which
 ;; hands control back to you.
-
  
-;(defworld whitespace :background "story")
+(defun xor ()
+  (play-music "cosmos")
+  (set-blending-mode :additive)
+  (dotimes (n 8)
+    (add-block (new cloud)))
+  (dotimes (n 10)
+    (add-block (new star))))
+    
+;; Once your startup function is finished, the game is running.
 
-;; (define-method initialize dot ()
-;;   (bind-event self (:up) (move :north 5 :pixels))
-;;   (bind-event self (:down) (move :south 5 :pixels))
-;;   (bind-event self (:right) (move :east 5 :pixels))
-;;   (bind-event self (:left) (move :west 5 :pixels)))
-
-;; (play (new universe)
-;;       :world (new whitespace)
-;;       :dot (new dot))
-      
 ;;; xor.lisp ends here
