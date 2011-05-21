@@ -64,6 +64,7 @@
 
 (defsprite cloud 
   :image (random-choose *cloud-images*)
+  :blend :additive ;; for nice transparency.
   :direction (random-direction)
   :x (+ 80 (random 500)) 
   :y (+ 80 (random 500)))
@@ -92,6 +93,7 @@
 
 (defsprite star 
   :image (random-choose *star-images*)
+  :blend :additive
   :x (random 500)
   :y (random 500))
 
@@ -112,10 +114,9 @@
  
 (defun xor ()
   (play-music "cosmos")
-  (set-blending-mode :additive)
-  (dotimes (n 8)
+  (dotimes (n 6)
     (add-block (new cloud)))
-  (dotimes (n 10)
+  (dotimes (n 20)
     (add-block (new star))))
     
 ;; Once your startup function is finished, the game is running.
