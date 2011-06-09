@@ -18,10 +18,6 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; THIS TUTORIAL EXAMPLE IS UNDER CONSTRUCTION.
-;; TODO user control
-;; TODO proper world use and bouncing ball
-
 ;;; Preamble
 
 ;; First, we set up a package (often called a "namespace" in other
